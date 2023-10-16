@@ -1,4 +1,4 @@
-// カメラの映像を描く
+// フレームレート１の鏡
 
 // カメラの映像を扱うためのライブラリをインポート
 import processing.video.*;
@@ -10,7 +10,7 @@ void setup() {
   fullScreen();
   //size(1000, 600);
 
-  // カメラを初期化（おまじない。現時点で深い意味は考えなくてOK）
+  // カメラを初期化
   cam = new Capture(this,width,height,Capture.list()[0],1);
   cam.start();
 }
@@ -23,7 +23,7 @@ void draw() {
 
   background(0);
 
-  // 映像を描く（カメラの映像は画像 PImage と同じように扱える）
+  // 本来のカメラ映像
   //image(cam, 0, 0);
   
   //反転して鏡にする
