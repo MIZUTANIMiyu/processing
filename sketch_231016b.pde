@@ -1,3 +1,5 @@
+//表示にラグのあるペン
+
 void setup() {
   size(1200, 1000);
   background(255);
