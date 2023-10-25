@@ -1,0 +1,70 @@
+import processing.video.*;
+
+
+int numPixels;    //画面のピクセルの総数
+int[] preFrame;    //一つ前のフレーム
+int filter = 50;     //わずかな変化を弾くフィルタ
+
+Capture video;    //キャプチャ映像用の変数
+
+void setup() {
+  //size(900, 600);
+  fullScreen();
+
+  video = new Capture(this, width, height, 30);//フレームレート1~30
+  video.start();
+
+  //カメラ映像のピクセル数
+  numPixels = video.width * video.height;
+  //現在のフレームと比べるための一つ前のフレーム用の配列
+  preFrame = new int[numPixels];
+  loadPixels();
+}
+
+
+
+void draw() {
+
+  if (video.available()) {  //もしキャプチャができたら、
+    video.read(); //ビデオフレームの読み込み
+    video.loadPixels(); //ビデオのピクセルを操作できるようにする
+
+
+
+    int movementSum = 0; //一つのフレームでの動作量
+    for (int i = 0; i < numPixels; i++) { //フレーム内のそれぞれのピクセルを検出
+      color currColor = video.pixels[i];
+      color prevColor = preFrame[i];
+
+      //現在のフレームの色
+      int currR = (currColor >> 16) & 0xFF;
+      int currG = (currColor >> 8) & 0xFF;
+      int currB = currColor & 0xFF;
+
+      //一つ前のフレームの色
+      int prevR = (prevColor >> 16) & 0xFF;
+      int prevG = (prevColor >> 8) & 0xFF;
+      int prevB = prevColor & 0xFF;
+
+      //現在のフレームと前のフレームの色の差分
+      int diffR = abs(currR - prevR);
+      int diffG = abs(currG - prevG);
+      int diffB = abs(currB - prevB);
+
+      //フィルターより値が大きければ変化とみなし、黒で描画
+      if (diffR + diffG + diffB > filter) {
+        movementSum +=diffR + diffG + diffB; //プリント用に変化量を記録
+        pixels[i] = color(0);
+      } else {
+        //それ以外の部分は白で描画、黒の残像を残すため不透明度10
+        pixels[i] = color(255, 255, 255, 10);
+      }
+
+      //現在のフレームの色を前のフレームの色にする
+      preFrame[i] = currColor;
+    }
+
+    updatePixels();    //ピクセルを更新
+    println(movementSum);    //変化したピクセルの総数をプリント
+  }
+}
