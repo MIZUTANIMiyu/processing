@@ -1,0 +1,73 @@
+int incomingByte; //Processingからの文字データ
+int trig = 2; // 距離センサーの出力ピン＝arduinoの2にさしてあるよ
+int echo = 3; // 距離センサーの入力ピン＝arduinoの3にさしてあるよ
+
+//距離センサーの値はたまに変な数字になっちゃうことがあるから、平均をとった方が正確になる
+//↓これは平均を計算するために、距離センサーの値を一旦保存しとくための部屋を作っているよ
+const int BUFFER_LENGTH = 10;
+int buffer[BUFFER_LENGTH];
+int index = 0;
+
+
+void setup() {
+  Serial.begin(9600); //9600っていうスピードでシリアル通信を始めるよ
+  pinMode(trig, OUTPUT);//距離センサーのtrigのピンは、センサーから超音波を出力するのに使うよ
+  pinMode(echo, INPUT);//距離センサーのechoのピンは、センサーから超音波を入力するのに使うよ
+  establishContact(); //[establishContact]の式を使って、processingに「準備できたよ」って連絡して返事を待つよ
+
+}
+
+void loop() {
+  if (Serial.available() > 0){ //processingからも「準備できたよ」って言われたら(0より大きい値が送られてきたら)
+
+//距離センサーに距離を計算してもらう----------
+  // 超音波の出力終了
+  digitalWrite(trig, LOW);
+  delayMicroseconds(1);
+  // 超音波を出力
+  digitalWrite(trig, HIGH);
+  delayMicroseconds(11);
+  // 超音波を出力終了
+  digitalWrite(trig, LOW);
+  // 出力した超音波が返って来る時間を計測
+  int t = pulseIn(echo, HIGH);
+  // 計測した時間と音速から反射物までの距離を計算
+  int distance = int(t * 0.017);
+//------------------------------------
+
+//[getSmoothedData]の指揮を使って、距離センサーの値の平均を出す
+  buffer[index] = distance;
+  int smoothedVal = getSmoothedData(buffer);
+
+  // 平均値をシリアル通信でprocessingに送る！
+  Serial.println(smoothedVal);
+  
+  // 平均を計算する部屋を空にして、次の数字たちに明け渡す
+  index = index + 1;
+  if(index == BUFFER_LENGTH){
+    index = 0;
+  }
+}
+}
+
+
+//processingに「準備できたよ」って言う時に使ってた式//////////
+void establishContact() {
+  // processingから何か送られてくるまで大文字の'A'を送信
+  while (Serial.available() <= 0) {
+    Serial.print('A'); 
+    delay(300);
+  }
+}
+
+
+//// 平均を計算するとき使ってた式 ////////////
+int getSmoothedData(int b[]) {
+  long sum = 0; // 配列の値を全部足す用の変数
+  // for文で配列の値を全部足す
+  for (int i = 0; i < BUFFER_LENGTH; i++) {
+    sum += b[i];
+  }
+  // 配列の大きさで割って平均値を出して数値を返す
+  return (int)(sum / BUFFER_LENGTH);
+}
