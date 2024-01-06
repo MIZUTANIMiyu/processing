@@ -1,0 +1,32 @@
+import processing.serial.*; //シリアル通信を始めるよ
+Serial myPort;//シリアル通信に使うポート(arduino刺さってるusbポート) はmyPortって名前で呼ぶことにするよ                   
+int smoothedVal;//距離センサーの値はsmoothedValって呼ぶことにする(arduino側と同じ名前)
+
+
+void setup() {
+ //このusbポートに刺さってるarduinoをシリアル通信に使うよ
+ //"/dev/cu.usbmodem1301"←ここは端末によって変わる、arduinoウィンドウの右下に書いてあるポートを打ち込んでね
+myPort = new Serial(this, "/dev/cu.usbmodem1301", 9600);
+}
+
+void draw() {
+  println(smoothedVal); //コンソール(メモ欄)に距離を表示してね
+  }
+
+
+//processingからきた距離センサーの値を、荷解きして数字を取り出す
+void serialEvent(Serial p) {
+  if (p.available() > 0) {
+    try {
+      String input = p.readStringUntil('\n');//改行コードごとに処理
+      if (input != null) { //inputに何かしらデータが入ってたら
+        input = trim(input); //改行コードを取り除く
+        String s[] = split(input, ',');
+        smoothedVal = int(s[0]); //文字列としてきた数をint型数値に変換する
+        
+      }
+    }
+    catch (RuntimeException e) {
+    }
+  }
+}
