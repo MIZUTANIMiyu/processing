@@ -1,0 +1,95 @@
+:dolphin: processing
+```
+import processing.serial.*; //シリアル通信を始めるよ
+
+Serial myPort;//シリアル通信に使うポート(arduino刺さってるusbポート) はmyPortって名前で呼ぶことにするよ
+int[] serialInArray = new int[3];
+int serialCount = 0;
+int smoothedVal;//距離センサーの値はsmoothedValって呼ぶことにする(arduino側と同じ名前)
+boolean firstContact = false;
+
+// 動画を扱うためのライブラリをインポート
+import processing.video.*;
+// 動画
+Movie mv1;
+Movie mv2;
+
+
+void setup() {
+  smoothedVal = 0;
+
+  //このusbポートに刺さってるarduinoをシリアル通信に使うよ
+  //"/dev/cu.usbmodem1301"←ここは端末によって変わる、arduinoウィンドウの右下に書いてあるポートを打ち込んでね
+  myPort = new Serial(this, "/dev/cu.usbmodem11401", 9600);
+
+  fullScreen();
+  //size(1000, 900);
+
+  // 動画を読み込む
+  mv1 = new Movie(this, "kuru5hun.mp4");
+  mv2 = new Movie(this, "saru5hun.mp4");
+  // 再生を開始
+  mv1.play();
+  mv2.play();
+}
+
+void draw() {
+  // フレーム読み込みの準備ができていない場合、何もしない
+  if (mv1.available() == false) {
+    return;
+  } else if (mv2.available() == false) {
+    return;
+  } else {
+
+    // フレームを読み込む
+    if (smoothedVal<50) { //←←←←←←←←ここがセンサーの値によって切り替えるところ！！！！！！
+      mv1.read();
+      mv2.stop();
+      background(0);
+
+      // 動画を描く（動画は画像 PImage と同じように扱える）
+      image(mv1, 0, 0);
+      mv1.loop();
+    } else {
+      mv2.read();
+
+      background(0);
+
+      // 動画を描く（動画は画像 PImage と同じように扱える）
+      image(mv2, 0, 0);
+      mv2.loop();
+    }
+  }
+
+}
+
+
+
+void serialEvent(Serial myPort) {
+  int inByte = myPort.read();
+
+  // 最初の接続が確認できてない場合
+  if (firstContact == false) {
+    if (inByte == 'A') {
+      myPort.clear();          // シリアルポートのバッファーをクリアする
+      firstContact = true;     // ファーストコンタクト成功！
+      myPort.write('A');       // 'A'をArduinoに送る
+    }
+  }
+
+  // 最初の接続が確認できてたら
+  else {
+    serialInArray[serialCount] = inByte;
+    serialCount++;
+
+    // データが２つきてたら（データが３つの場合は「2」に書き換える）
+    if (serialCount > 0 ) {
+      smoothedVal = serialInArray[0]; // 配列の1番目をscale変数に格納
+      println(smoothedVal);
+
+      myPort.write('A'); // 'A'をArduinoに送る
+      serialCount = 0; // serialCountをリセット
+    }
+  }
+}
+```
