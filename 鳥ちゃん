@@ -1,5 +1,3 @@
-:dolphin: processing
-```
 import processing.serial.*; //シリアル通信を始めるよ
 
 Serial myPort;//シリアル通信に使うポート(arduino刺さってるusbポート) はmyPortって名前で呼ぶことにするよ
