@@ -1,0 +1,106 @@
+/*chatGPTで調べた、フレーム毎に差分をとっていくコードをベースに作っています
+videoライブラリに関するエラーについては、ソフトウェア演習の北田先生の記事が参考になるかもしれません
+ [Processing 4.2でのVideoライブラリの問題と解決策：2023年度版-https://note.com/soohei/n/nb1a3e7445af0]*/
+
+import processing.video.*; //映像ライブラリをインポート
+Capture video;    //キャプチャ映像
+
+int filter = 30;  //一定量以下の変化を弾くためのフィルタ ※環境によって値を調整する
+
+int numPixels;    //画面ピクセルの総数
+int[] preFrame;   //比較用の直前のフレーム
+int movementSum; //フレーム毎の動作量
+
+//ディスプレイ環境に応じてフォントサイズが変わるようにする
+float originalFontSize=40; //開発環境における最適なフォントサイズ
+float originalHeight=875; //開発環境のheight
+float fontPercentage=originalFontSize/originalHeight; //画面縦幅に対するフォントサイズの比率
+float fontSize; //算出するフォントサイズ
+
+void setup() {
+  //size(1440, 875);
+  fullScreen();
+  noCursor();
+
+  fontSize=height*fontPercentage; //フルスクリーン時のheightからフォントサイズを規定
+  PFont font = createFont("YuGo-Medium", 50);
+  textFont(font);
+  textSize(fontSize);
+  textAlign(CENTER, CENTER);
+
+  video = new Capture(this, width, height, 30);
+  /*環境によっては、フレームレートが原因でエラーが出る/処理落ちすることがあります。
+   30でエラーの時は25、25でエラーの時は30にすると成功することが多いです。詳しい条件は不明です。*/
+  video.start();
+  numPixels = video.width * video.height; //カメラ映像のピクセル数
+  preFrame = new int[numPixels]; //直前のフレームを覚えておくための配列
+  loadPixels();
+}
+
+
+
+void draw() {
+
+  if (video.available()) {  //キャプチャができたら
+    video.read(); //ビデオフレーム読み込み
+
+    comparisonCamera(); //カメラ映像の処理
+    message(); //「立ち止まって画面を見つめてください」の表示
+  }
+}
+
+
+
+void comparisonCamera() { //カメラ映像の処理
+  video.loadPixels(); //カメラ映像をピクセルごとに読み込み
+
+  movementSum = 0; //動作量を初期化
+  for (int i = 0; i < numPixels; i++) { //フレーム内のそれぞれのピクセルを検出
+    color currColor = video.pixels[i];//現在のフレームのピクセル色
+    color prevColor = preFrame[i];//直前のフレームのピクセル色
+
+    //現在のフレームの色を抽出
+    //32ビットの色データからRGBごとの値を抜き出す
+    int currR = (currColor >> 16) & 0xFF;
+    int currG = (currColor >> 8) & 0xFF;
+    int currB = currColor & 0xFF;
+
+    //一つ前のフレームの色を抽出
+    int prevR = (prevColor >> 16) & 0xFF;
+    int prevG = (prevColor >> 8) & 0xFF;
+    int prevB = prevColor & 0xFF;
+
+    //現在のフレームと前のフレームの色の差分
+    int diffR = abs(currR - prevR);
+    int diffG = abs(currG - prevG);
+    int diffB = abs(currB - prevB);
+
+    //差分量を合計
+    int diffColor = diffR + diffG + diffB;
+
+    //フィルターよりも差分量が大きければ「変化」とみなす
+    if (diffColor > filter) {
+      movementSum +=diffColor; //変化量
+      pixels[i] = color(0); //変化したところは黒で描画
+    } else {
+      pixels[i] = color(255, 255, 255, 3); //それ以外の部分は白で描画、残像を残すため不透明度3
+    }
+    preFrame[i] = currColor; //現在のピクセル色を次の「直前のピクセル色」に入れる
+  }
+  updatePixels(); //ピクセルを更新
+  println(movementSum); 
+}
+
+
+void message() { //「立ち止まって画面を見つめてください」の表示
+  int littleMovement = 200000; //軽く立ち止まったときの変化量
+
+  if (movementSum>=littleMovement) {//軽く立ち止まるまで、指示メッセージを表示
+    float fontpx=fontSize*1.34; //フォントサイズ(pt)をpxに変換
+    noStroke();
+    fill(255);
+    rect(0, 0, width, fontpx); //文字の背景
+    fill(0);
+    text("立ち止まって画面を見つめてください", width/2, fontpx/2);
+  }
+}
